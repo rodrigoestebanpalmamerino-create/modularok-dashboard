@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ModularOK — Dashboard Ejecutivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --ink:    #0a0b0d;
+  --ink2:   #13151a;
+  --ink3:   #1c1f27;
+  --ink4:   #252933;
+  --muted:  #3d4251;
+  --sub:    #6b7280;
+  --dim:    #9ca3af;
+  --text:   #f1f3f7;
+  --text2:  #c8cdd8;
+  --lime:   #b8ff3c;
+  --lime2:  #8fcc1e;
+  --blue:   #3d8bff;
+  --teal:   #00d4aa;
+  --amber:  #ffb020;
+  --red:    #ff4d4d;
+  --purple: #a78bfa;
+  --coral:  #ff6b4a;
+  --r:      14px;
+  --r-sm:   8px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--ink);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: .4;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 36px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  position: sticky; top: 0;
+  background: rgba(10,11,13,.92);
+  backdrop-filter: blur(20px);
+  z-index: 100;
+  gap: 16px; flex-wrap: wrap;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-mark {
+  width: 32px; height: 32px;
+  background: var(--lime);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-mark svg { width: 18px; height: 18px; }
+.logo-text { font-size: 17px; font-weight: 800; letter-spacing: -.03em; }
+.logo-text span { color: var(--lime); }
+.header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hpill {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.08);
+  color: var(--sub);
+  white-space: nowrap;
+}
+.hpill.live {
+  border-color: rgba(184,255,60,.25);
+  color: var(--lime);
+  background: rgba(184,255,60,.06);
+  display: flex; align-items: center; gap: 6px;
+}
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--lime);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+.btn-refresh {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; font-weight: 600;
+  padding: 7px 16px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: var(--text2);
+  cursor: pointer; transition: all .2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-refresh:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); }
+.btn-refresh.spinning svg { animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── MAIN ── */
+.main { max-width: 1280px; margin: 0 auto; padding: 32px 36px 80px; position: relative; z-index: 1; }
+
+/* ── SECTION LABEL ── */
+.slabel {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin: 36px 0 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.slabel::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.05); }
+
+/* ── LOADING ── */
+.loading {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 60vh; gap: 16px;
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 2px solid rgba(184,255,60,.15);
+  border-top-color: var(--lime);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.loading-text { font-size: 14px; color: var(--sub); }
+
+/* ── ERROR ── */
+.error-state {
+  text-align: center; padding: 60px 20px;
+  display: none;
+}
+.error-icon { font-size: 36px; margin-bottom: 12px; }
+.error-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--red); }
+.error-sub { font-size: 13px; color: var(--sub); }
+
+/* ── MONTH FILTER ── */
+.month-bar { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; align-items: center; }
+.mbar-label { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-right: 4px; }
+.mbtn {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; font-weight: 600;
+  padding: 6px 16px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.07);
+  background: transparent; color: var(--sub);
+  cursor: pointer; transition: all .15s;
+}
+.mbtn:hover { border-color: rgba(255,255,255,.15); color: var(--text2); }
+.mbtn.active { background: var(--lime); color: #0a0b0d; border-color: var(--lime); }
+
+/* ── KPI GRID ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi {
+  background: var(--ink2);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--r);
+  padding: 20px 22px;
+  position: relative; overflow: hidden;
+  transition: border-color .2s, transform .2s;
+  cursor: default;
+}
+.kpi:hover { border-color: rgba(255,255,255,.12); transform: translateY(-1px); }
+.kpi::after {
+  content: ''; position: absolute;
+  top: 0; right: 0;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  filter: blur(20px);
+  opacity: .12;
+}
+.kpi.k-lime::after  { background: var(--lime); }
+.kpi.k-blue::after  { background: var(--blue); }
+.kpi.k-teal::after  { background: var(--teal); }
+.kpi.k-amber::after { background: var(--amber); }
+.kpi.k-purple::after{ background: var(--purple); }
+.kpi.k-coral::after { background: var(--coral); }
+.kpi-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.kpi-value { font-size: 28px; font-weight: 800; letter-spacing: -.04em; line-height: 1; margin-bottom: 6px; }
+.kpi.k-lime  .kpi-value { color: var(--lime); }
+.kpi.k-blue  .kpi-value { color: var(--blue); }
+.kpi.k-teal  .kpi-value { color: var(--teal); }
+.kpi.k-amber .kpi-value { color: var(--amber); }
+.kpi.k-purple .kpi-value{ color: var(--purple); }
+.kpi.k-coral .kpi-value { color: var(--coral); }
+.kpi-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--ink2);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--r);
+  padding: 22px 24px;
+}
+.card-head { margin-bottom: 18px; }
+.card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.card-sub { font-size: 12px; color: var(--sub); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* ── LEGEND ── */
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+.leg { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--sub); }
+.leg-sq { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── BAR LIST ── */
+.bar-list { display: flex; flex-direction: column; gap: 9px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-name { width: 135px; font-size: 12px; color: var(--sub); flex-shrink: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.bar-track { flex: 1; background: var(--ink3); border-radius: 4px; height: 20px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.bar-val { width: 66px; font-size: 11px; color: var(--text); font-weight: 600; font-family: 'DM Mono', monospace; text-align: right; flex-shrink: 0; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; flex-shrink: 0; letter-spacing: .02em; }
+.bg-green  { background: rgba(0,212,170,.12); color: var(--teal); }
+.bg-amber  { background: rgba(255,176,32,.12); color: var(--amber); }
+.bg-red    { background: rgba(255,77,77,.12);  color: var(--red); }
+
+/* ── INSIGHTS ── */
+.ig-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px,1fr)); gap: 12px; }
+.ig-card {
+  background: var(--ink2);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  position: relative; overflow: hidden;
+  transition: transform .2s, border-color .2s;
+}
+.ig-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.12); }
+.ig-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; border-radius: 4px 0 0 4px; }
+.ig-lime::before   { background: var(--lime); }
+.ig-amber::before  { background: var(--amber); }
+.ig-red::before    { background: var(--red); }
+.ig-blue::before   { background: var(--blue); }
+.ig-purple::before { background: var(--purple); }
+.ig-coral::before  { background: var(--coral); }
+.ig-icon { font-size: 20px; margin-bottom: 8px; }
+.ig-lime   .ig-icon { color: var(--lime); }
+.ig-amber  .ig-icon { color: var(--amber); }
+.ig-red    .ig-icon { color: var(--red); }
+.ig-blue   .ig-icon { color: var(--blue); }
+.ig-purple .ig-icon { color: var(--purple); }
+.ig-coral  .ig-icon { color: var(--coral); }
+.ig-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 5px; line-height: 1.35; }
+.ig-body  { font-size: 12px; color: var(--sub); line-height: 1.65; }
+.ig-stat  { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-top: 10px; font-family: 'DM Mono', monospace; }
+.ig-lime   .ig-stat { background: rgba(184,255,60,.1);  color: var(--lime); }
+.ig-amber  .ig-stat { background: rgba(255,176,32,.1);  color: var(--amber); }
+.ig-red    .ig-stat { background: rgba(255,77,77,.1);   color: var(--red); }
+.ig-blue   .ig-stat { background: rgba(61,139,255,.1);  color: var(--blue); }
+.ig-purple .ig-stat { background: rgba(167,139,250,.1); color: var(--purple); }
+.ig-coral  .ig-stat { background: rgba(255,107,74,.1);  color: var(--coral); }
+.ig-bar { width: 100%; height: 3px; background: var(--ink3); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.ig-bar-fill { height: 100%; border-radius: 3px; opacity: .6; }
+
+/* ── TABLE ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  text-align: left; padding: 0 10px 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.data-table td { padding: 10px 10px 10px 0; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text); vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,.02); }
+.mono { font-family: 'DM Mono', monospace; font-size: 11px; }
+.mes-tag { font-size: 10px; padding: 3px 9px; border-radius: 10px; background: var(--ink3); color: var(--sub); font-weight: 600; white-space: nowrap; }
+.seg-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--sub); font-weight: 500; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── FOOTER ── */
+.footer { text-align: center; padding: 40px 20px 20px; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+@media(max-width:768px){
+  .main { padding: 20px 18px 60px; }
+  .header { padding: 14px 18px; }
+  .two-col, .three-col { grid-template-columns: 1fr; }
+  .kpi-value { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="2" y="2" width="6" height="6" rx="1.5" fill="#0a0b0d"/>
+        <rect x="10" y="2" width="6" height="6" rx="1.5" fill="#0a0b0d"/>
+        <rect x="2" y="10" width="6" height="6" rx="1.5" fill="#0a0b0d"/>
+        <rect x="10" y="10" width="6" height="6" rx="1.5" fill="#0a0b0d" opacity=".4"/>
+      </svg>
+    </div>
+    <div class="logo-text">Modular<span>OK</span></div>
+  </div>
+  <div class="header-right">
+    <div class="hpill live"><div class="live-dot"></div>En vivo · Google Sheets</div>
+    <div class="hpill" id="h-count">Cargando...</div>
+    <div class="hpill" id="h-updated"></div>
+    <button class="btn-refresh" id="btn-refresh" onclick="cargarDatos()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1,4 3,2 5,4"/><path d="M3 2v5a5 5 0 0 0 10 0V5"/>
+      </svg>
+      Actualizar
+    </button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">Conectando con Google Sheets...</div>
+  </div>
+
+  <div class="error-state" id="error-state">
+    <div class="error-icon">⚠️</div>
+    <div class="error-title">No se pudieron cargar los datos</div>
+    <div class="error-sub">Verifica que el Sheet sea público y vuelve a intentarlo</div>
+  </div>
+
+  <div id="content" style="display:none">
+    <div class="month-bar" id="month-bar"></div>
+
+    <div class="slabel">Resumen del período</div>
+    <div class="kpi-grid">
+      <div class="kpi k-lime"><div class="kpi-label">Ingresos totales</div><div class="kpi-value" id="k-ing">—</div><div class="kpi-sub" id="k-ing-s"></div></div>
+      <div class="kpi k-red"><div class="kpi-label">Costos totales</div><div class="kpi-value" id="k-cost">—</div><div class="kpi-sub" id="k-cost-s"></div></div>
+      <div class="kpi k-teal"><div class="kpi-label">Utilidad bruta</div><div class="kpi-value" id="k-util">—</div><div class="kpi-sub" id="k-util-s"></div></div>
+      <div class="kpi k-blue"><div class="kpi-label">Margen bruto</div><div class="kpi-value" id="k-mg">—</div><div class="kpi-sub" id="k-mg-s"></div></div>
+      <div class="kpi k-amber"><div class="kpi-label">Proyecto estrella</div><div class="kpi-value" id="k-star" style="font-size:16px;padding-top:4px">—</div><div class="kpi-sub" id="k-star-s"></div></div>
+      <div class="kpi k-purple"><div class="kpi-label">Mayor margen</div><div class="kpi-value" id="k-topmargen" style="font-size:16px;padding-top:4px">—</div><div class="kpi-sub" id="k-topmargen-s"></div></div>
+    </div>
+
+    <div class="slabel">Evolución mensual</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-head">
+        <div class="card-title">Ingresos, costos y utilidad por mes</div>
+        <div class="card-sub">Millones CLP · IVA incluido</div>
+      </div>
+      <div class="legend">
+        <div class="leg"><div class="leg-sq" style="background:var(--blue)"></div>Ingresos</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--red)"></div>Costos</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--teal)"></div>Utilidad</div>
+      </div>
+      <div style="position:relative;width:100%;height:240px"><canvas id="c-monthly"></canvas></div>
+    </div>
+
+    <div class="two-col" style="margin-bottom:12px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Margen bruto por mes</div><div class="card-sub">% sobre ingresos</div></div>
+        <div style="position:relative;width:100%;height:170px"><canvas id="c-margen"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Proyectos por mes</div><div class="card-sub">Cantidad de proyectos</div></div>
+        <div style="position:relative;width:100%;height:170px"><canvas id="c-count"></canvas></div>
+      </div>
+    </div>
+
+    <div class="slabel">Mix por industria</div>
+    <div class="two-col" style="margin-bottom:12px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Participación por segmento</div><div class="card-sub">% del total de ingresos</div></div>
+        <div style="position:relative;height:220px"><canvas id="c-seg"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Ingresos por segmento</div><div class="card-sub">Valores en millones CLP</div></div>
+        <div class="bar-list" id="seg-bars"></div>
+      </div>
+    </div>
+
+    <div class="slabel">Ranking por utilidad</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-head"><div class="card-title">Proyectos ordenados por utilidad bruta</div><div class="card-sub">Color según mes · Badge indica margen</div></div>
+      <div class="bar-list" id="proj-bars"></div>
+    </div>
+
+    <div class="slabel">Insights clave</div>
+    <div class="ig-grid" id="ig-grid"></div>
+
+    <div class="slabel" style="margin-top:36px">Detalle de proyectos</div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr>
+          <th>Proyecto</th><th>Mes</th><th>Segmento</th>
+          <th>Ingresos</th><th>Costos</th><th>Utilidad</th><th>Margen</th>
+        </tr></thead>
+        <tbody id="proj-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+const SHEET_ID  = '1QoDChie1-1DDZNuRprcPZIp6xo_nAoPah8FH9N3i0dQ';
+const SHEET_TAB = 'Proyectos';
+const GID       = '1521200635';
+const GVIZ_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+
+const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MONTHS_FULL  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MES_COLORS   = {1:'#a78bfa',2:'#60a5fa',3:'#3d8bff',4:'#00d4aa',5:'#b8ff3c',6:'#ffb020',7:'#ff6b4a',8:'#ff7eb3',9:'#ff4d4d',10:'#c084fc',11:'#34d399',12:'#fbbf24'};
+const SEG_COLORS   = {'Entretenimiento':'#3d8bff','Industria & Pesca':'#00d4aa','Salud':'#ff7eb3','Automotriz':'#ffb020','Alim. & Bebidas':'#b8ff3c','Alimentación':'#ff6b4a','Educación':'#a78bfa','Eventos corp.':'#6b7280'};
+
+let allProjects = [];
+let activeMonth = 'todos';
+let charts = {};
+
+async function cargarDatos() {
+  const btn = document.getElementById('btn-refresh');
+  btn.classList.add('spinning');
+
+  try {
+    const res  = await fetch(GVIZ_URL);
+    const text = await res.text();
+    // gviz returns: google.visualization.Query.setResponse({...})
+    const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
+    const cols = json.table.cols.map(c => c.label);
+    const rows = json.table.rows || [];
+
+    const ci = {};
+    cols.forEach((c,i) => { ci[c] = i; });
+
+    allProjects = rows
+      .filter(r => r.c && r.c[ci['Proyecto']]?.v)
+      .map(r => ({
+        name:     String(r.c[ci['Proyecto']]?.v || '').trim(),
+        mes:      parseInt(r.c[ci['Mes']]?.v) || 0,
+        ingresos: parseFloat(r.c[ci['Ingresos']]?.v) || 0,
+        costos:   parseFloat(r.c[ci['Costos']]?.v) || 0,
+        utilidad: parseFloat(r.c[ci['Utilidad']]?.v) || 0,
+        margen:   parseFloat(r.c[ci['Margen %']]?.v) || 0,
+        cat:      String(r.c[ci['Segmento']]?.v || 'Eventos corp.').trim(),
+      }))
+      .filter(p => p.ingresos > 0);
+
+    document.getElementById('loading').style.display     = 'none';
+    document.getElementById('error-state').style.display = 'none';
+    document.getElementById('content').style.display     = 'block';
+
+    const now = new Date();
+    document.getElementById('h-updated').textContent = `Actualizado ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+    document.getElementById('footer').textContent = `Datos obtenidos desde Google Sheets · ${now.toLocaleDateString('es-CL', {day:'2-digit',month:'long',year:'numeric'})}`;
+
+    renderDashboard();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loading').style.display     = 'none';
+    document.getElementById('error-state').style.display = 'block';
+  }
+
+  btn.classList.remove('spinning');
+}
+
+function fmt(v) {
+  const a = Math.abs(v);
+  if (a >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
+  if (a >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return '$' + Math.round(v/1e3) + 'K';
+  return '$' + Math.round(v).toLocaleString('es-CL');
+}
+
+function getFiltered() {
+  return activeMonth === 'todos' ? allProjects : allProjects.filter(p => p.mes === activeMonth);
+}
+
+function renderDashboard() {
+  renderMonthBar();
+  const d = getFiltered();
+  renderKPIs(d);
+  renderMonthlyCharts();
+  renderSegments(d);
+  renderProjBars(d);
+  renderInsights(d);
+  renderTable(d);
+  document.getElementById('h-count').textContent = allProjects.length + ' proyecto' + (allProjects.length !== 1 ? 's' : '');
+}
+
+function renderMonthBar() {
+  const months = [...new Set(allProjects.map(p => p.mes))].filter(m => m > 0).sort((a,b) => a-b);
+  const bar = document.getElementById('month-bar');
+  bar.innerHTML = '<span class="mbar-label">Filtrar</span>';
+  const all = document.createElement('button');
+  all.className = 'mbtn' + (activeMonth === 'todos' ? ' active' : '');
+  all.textContent = 'Todos';
+  all.onclick = () => { activeMonth = 'todos'; renderDashboard(); };
+  bar.appendChild(all);
+  months.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'mbtn' + (activeMonth === m ? ' active' : '');
+    btn.textContent = MONTHS_FULL[m-1] || m;
+    btn.onclick = () => { activeMonth = m; renderDashboard(); };
+    bar.appendChild(btn);
+  });
+}
+
+function renderKPIs(data) {
+  const ing  = data.reduce((s,p) => s+p.ingresos, 0);
+  const cost = data.reduce((s,p) => s+p.costos, 0);
+  const util = data.reduce((s,p) => s+p.utilidad, 0);
+  const mg   = ing > 0 ? util/ing*100 : 0;
+  document.getElementById('k-ing').textContent    = fmt(ing);
+  document.getElementById('k-ing-s').textContent   = data.length + ' proyectos';
+  document.getElementById('k-cost').textContent   = fmt(cost);
+  document.getElementById('k-cost-s').textContent  = Math.round(cost/ing*100) + '% sobre ingresos';
+  document.getElementById('k-util').textContent   = fmt(util);
+  document.getElementById('k-util-s').textContent  = 'utilidad acumulada';
+  document.getElementById('k-mg').textContent     = Math.round(mg) + '%';
+  document.getElementById('k-mg-s').textContent    = 'margen promedio';
+  const star  = [...data].sort((a,b) => b.utilidad - a.utilidad)[0];
+  const topMg = [...data].sort((a,b) => b.margen - a.margen)[0];
+  if (star)  { document.getElementById('k-star').textContent      = star.name;   document.getElementById('k-star-s').textContent      = fmt(star.utilidad) + ' utilidad'; }
+  if (topMg) { document.getElementById('k-topmargen').textContent = topMg.name;  document.getElementById('k-topmargen-s').textContent  = Math.round(topMg.margen) + '% margen'; }
+}
+
+function renderMonthlyCharts() {
+  const months = [...new Set(allProjects.map(p=>p.mes))].filter(m=>m>0).sort((a,b)=>a-b);
+  const labels = months.map(m => MONTHS_SHORT[m-1] || m);
+  const r1 = arr => arr.map(v => Math.round(v*10)/10);
+  const ing  = r1(months.map(m => allProjects.filter(p=>p.mes===m).reduce((s,p)=>s+p.ingresos,0)/1e6));
+  const cost = r1(months.map(m => allProjects.filter(p=>p.mes===m).reduce((s,p)=>s+p.costos,0)/1e6));
+  const util = r1(months.map(m => allProjects.filter(p=>p.mes===m).reduce((s,p)=>s+p.utilidad,0)/1e6));
+  const mg   = months.map((_,i) => ing[i]>0 ? Math.round(util[i]/ing[i]*1000)/10 : 0);
+  const cnt  = months.map(m => allProjects.filter(p=>p.mes===m).length);
+
+  ['monthly','margen','count'].forEach(k => { if(charts[k]) charts[k].destroy(); });
+
+  const gc = 'rgba(255,255,255,.04)', tc = '#3d4251';
+
+  charts.monthly = new Chart(document.getElementById('c-monthly'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label:'Ingresos', data:ing,  backgroundColor:'rgba(61,139,255,.8)',  borderRadius:4, barPercentage:.6 },
+      { label:'Costos',   data:cost, backgroundColor:'rgba(255,77,77,.7)',   borderRadius:4, barPercentage:.6 },
+      { label:'Utilidad', data:util, backgroundColor:'rgba(0,212,170,.8)',   borderRadius:4, barPercentage:.6 },
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales: { x:{ticks:{color:tc,font:{size:12,family:'Syne'}},grid:{display:false}},
+                y:{ticks:{callback:v=>'$'+v+'M',color:tc,font:{size:11}},grid:{color:gc}} }}
+  });
+
+  charts.margen = new Chart(document.getElementById('c-margen'), {
+    type: 'line',
+    data: { labels, datasets: [{ data:mg, borderColor:'#b8ff3c', backgroundColor:'rgba(184,255,60,.07)', pointBackgroundColor:'#b8ff3c', borderWidth:2.5, fill:true, tension:.35, pointRadius:5, pointHoverRadius:7 }]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales: { x:{ticks:{color:tc,font:{size:12,family:'Syne'}},grid:{display:false}},
+                y:{ticks:{callback:v=>v+'%',color:tc,font:{size:11}},grid:{color:gc}} }}
+  });
+
+  charts.count = new Chart(document.getElementById('c-count'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data:cnt, backgroundColor:months.map(m=>MES_COLORS[m]||'#3d8bff'), borderRadius:4, barPercentage:.55 }]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales: { x:{ticks:{color:tc,font:{size:12,family:'Syne'}},grid:{display:false}},
+                y:{ticks:{stepSize:1,color:tc,font:{size:11}},grid:{color:gc}} }}
+  });
+}
+
+function renderSegments(data) {
+  const totals = {};
+  data.forEach(p => { totals[p.cat] = (totals[p.cat]||0) + p.ingresos; });
+  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
+  const colors = sorted.map(([c]) => SEG_COLORS[c]||'#6b7280');
+  const total  = sorted.reduce((s,[,v]) => s+v, 0);
+  const max    = sorted[0]?.[1] || 1;
+
+  if (charts.seg) charts.seg.destroy();
+  charts.seg = new Chart(document.getElementById('c-seg'), {
+    type: 'doughnut',
+    data: { labels:sorted.map(s=>s[0]), datasets:[{ data:sorted.map(s=>Math.round(s[1]/1e6*10)/10), backgroundColor:colors, borderWidth:2, borderColor:'#13151a', hoverOffset:6 }]},
+    options: { responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: $${ctx.parsed}M`}} }}
+  });
+
+  document.getElementById('seg-bars').innerHTML = sorted.map(([cat,ing]) => {
+    const pct   = Math.round(ing/total*100);
+    const color = SEG_COLORS[cat]||'#6b7280';
+    return `<div class="bar-row">
+      <div class="bar-name">${cat}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(ing/max*100)}%;background:${color}"></div></div>
+      <div class="bar-val">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderProjBars(data) {
+  const sorted = [...data].sort((a,b) => b.utilidad - a.utilidad);
+  const max    = sorted[0]?.utilidad || 1;
+  document.getElementById('proj-bars').innerHTML = sorted.map(p => {
+    const mg  = Math.round(p.margen || p.utilidad/p.ingresos*100);
+    const cls = mg >= 70 ? 'bg-green' : mg >= 50 ? 'bg-amber' : 'bg-red';
+    const col = MES_COLORS[p.mes] || '#3d8bff';
+    return `<div class="bar-row">
+      <div class="bar-name">${p.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(p.utilidad/max*100)}%;background:${col}"></div></div>
+      <div class="bar-val">${fmt(p.utilidad)}</div>
+      <span class="badge ${cls}">${mg}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderInsights(data) {
+  if (data.length < 2) { document.getElementById('ig-grid').innerHTML = ''; return; }
+  const ing_t  = data.reduce((s,p)=>s+p.ingresos,0);
+  const util_t = data.reduce((s,p)=>s+p.utilidad,0);
+  const s_util = [...data].sort((a,b)=>b.utilidad-a.utilidad);
+  const s_mg   = [...data].sort((a,b)=>b.margen-a.margen);
+  const best   = s_util[0];
+  const bestMg = s_mg[0];
+  const worstMg= s_mg[s_mg.length-1];
+  const mg_b   = Math.round(bestMg.margen);
+  const mg_w   = Math.round(worstMg.margen);
+
+  const months  = [...new Set(data.map(p=>p.mes))].filter(m=>m>0);
+  const mData   = months.map(m=>({m,ing:data.filter(p=>p.mes===m).reduce((s,p)=>s+p.ingresos,0),n:data.filter(p=>p.mes===m).length}));
+  const topM    = mData.sort((a,b)=>b.ing-a.ing)[0];
+  const topMpct = topM ? Math.round(topM.ing/ing_t*100) : 0;
+  const concPct = Math.round(best.ingresos/ing_t*100);
+
+  const segs = {};
+  data.forEach(p=>{segs[p.cat]=(segs[p.cat]||0)+p.ingresos;});
+  const topSeg    = Object.entries(segs).sort((a,b)=>b[1]-a[1])[0];
+  const topSegPct = Math.round(topSeg[1]/ing_t*100);
+
+  const insights = [
+    topM && months.length > 1 ? {
+      color:'lime', icon:'📅',
+      title: `${MONTHS_FULL[topM.m-1]} concentra el ${topMpct}% de los ingresos`,
+      body:  `${topM.n} proyecto${topM.n!==1?'s':''} en ${MONTHS_FULL[topM.m-1]} generan ${fmt(topM.ing)} del total de ${fmt(ing_t)}.`,
+      stat:  `${fmt(topM.ing)} en ${MONTHS_SHORT[topM.m-1]}`, bar: topMpct
+    } : null,
+    {
+      color:'amber', icon:'🏆',
+      title: `${bestMg.name}: mayor margen (${mg_b}%)`,
+      body:  `Solo ${fmt(bestMg.costos)} en costos sobre ${fmt(bestMg.ingresos)} de ingresos. Referente de eficiencia operacional.`,
+      stat:  `${mg_b}% margen`, bar: mg_b
+    },
+    worstMg !== bestMg ? {
+      color:'red', icon:'⚠️',
+      title: `${worstMg.name}: margen más bajo (${mg_w}%)`,
+      body:  `${fmt(worstMg.costos)} en costos sobre ${fmt(worstMg.ingresos)} de ingresos. Alta carga operacional vs el resto.`,
+      stat:  `${mg_w}% margen`, bar: mg_w
+    } : null,
+    {
+      color:'blue', icon:'🏭',
+      title: `${topSeg[0]} lidera con el ${topSegPct}% de los ingresos`,
+      body:  `El segmento más relevante del período con ${fmt(topSeg[1])} en ingresos totales.`,
+      stat:  `${topSegPct}% del total`, bar: topSegPct
+    },
+    data.length > 1 ? {
+      color:'purple', icon:'🎯',
+      title: `Riesgo: ${best.name} representa el ${concPct}% del total`,
+      body:  `Un solo proyecto vale ${fmt(best.ingresos)}. Si no se repite, el período pierde su principal motor de ingresos.`,
+      stat:  `${concPct}% = 1 proyecto`, bar: concPct
+    } : null,
+    worstMg !== bestMg && (mg_b - mg_w) > 10 ? {
+      color:'coral', icon:'📊',
+      title: `Brecha de ${mg_b - mg_w} puntos entre mejor y peor margen`,
+      body:  `${bestMg.name} (${mg_b}%) vs ${worstMg.name} (${mg_w}%). ¿Qué tienen en común los proyectos más eficientes?`,
+      stat:  `${mg_b - mg_w}pp de brecha`, bar: Math.min(mg_b - mg_w, 100)
+    } : null,
+  ].filter(Boolean).slice(0, 6);
+
+  const COLOR_MAP = {lime:'var(--lime)',amber:'var(--amber)',red:'var(--red)',blue:'var(--blue)',purple:'var(--purple)',coral:'var(--coral)'};
+  document.getElementById('ig-grid').innerHTML = insights.map(ig => `
+    <div class="ig-card ig-${ig.color}">
+      <div class="ig-icon">${ig.icon}</div>
+      <div class="ig-title">${ig.title}</div>
+      <div class="ig-body">${ig.body}</div>
+      <div class="ig-bar"><div class="ig-bar-fill" style="width:${Math.min(ig.bar,100)}%;background:${COLOR_MAP[ig.color]}"></div></div>
+      <span class="ig-stat">${ig.stat}</span>
+    </div>`).join('');
+}
+
+function renderTable(data) {
+  const sorted = [...data].sort((a,b) => b.utilidad - a.utilidad);
+  document.getElementById('proj-tbody').innerHTML = sorted.map(p => {
+    const mg  = Math.round(p.margen || p.utilidad/p.ingresos*100);
+    const cls = mg >= 70 ? 'bg-green' : mg >= 50 ? 'bg-amber' : 'bg-red';
+    const col = SEG_COLORS[p.cat] || '#6b7280';
+    return `<tr>
+      <td style="font-weight:700">${p.name}</td>
+      <td><span class="mes-tag">${MONTHS_FULL[(p.mes||1)-1]||'—'}</span></td>
+      <td><span class="seg-dot"><span class="dot" style="background:${col}"></span>${p.cat}</span></td>
+      <td class="mono">${fmt(p.ingresos)}</td>
+      <td class="mono">${fmt(p.costos)}</td>
+      <td class="mono" style="font-weight:700;color:var(--lime)">${fmt(p.utilidad)}</td>
+      <td><span class="badge ${cls}">${mg}%</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// Auto-refresh every 5 minutes
+setInterval(cargarDatos, 5 * 60 * 1000);
+cargarDatos();
+</script>
+</body>
+</html>
