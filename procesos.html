@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ModularOK — Dashboard de Procesos</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Barlow:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --brand:#6B6FA8;--brand2:#4e5280;--brand3:#8b8fc4;
+  --bg:#f5f6f8;--bg2:#ffffff;--bg3:#eef0f4;--bg4:#e5e7ed;--border:#d8dbe6;
+  --text:#1a1b2e;--text2:#3d3f5c;--sub:#7b7e9e;--dim:#a8aabe;
+  --teal:#00a67e;--blue:#2563eb;--amber:#d97706;--red:#dc2626;--purple:#7c3aed;
+  --r:10px;--shadow:0 1px 3px rgba(26,27,46,.08),0 4px 16px rgba(26,27,46,.05);--shadow-lg:0 4px 24px rgba(26,27,46,.1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:62px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);box-shadow:0 1px 0 var(--border),0 2px 8px rgba(26,27,46,.06);z-index:100;gap:16px;flex-wrap:wrap}
+.header::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--brand2),var(--brand),var(--brand3))}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-img{height:26px;width:auto}
+.logo-divider{width:1px;height:22px;background:var(--border)}
+.logo-sub{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--brand)}
+.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hpill{font-family:'DM Mono',monospace;font-size:11px;padding:4px 12px;border-radius:4px;border:1px solid var(--border);color:var(--sub);white-space:nowrap;background:var(--bg3)}
+.hpill.live{border-color:rgba(107,111,168,.3);color:var(--brand);background:rgba(107,111,168,.08);display:flex;align-items:center;gap:6px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--brand);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.btn-refresh{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 16px;border-radius:4px;border:1px solid rgba(107,111,168,.35);background:rgba(107,111,168,.08);color:var(--brand);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-refresh:hover{background:rgba(107,111,168,.15);border-color:var(--brand)}
+.btn-refresh.spinning svg{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.main{max-width:1300px;margin:0 auto;padding:32px 40px 80px}
+.slabel{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:36px 0 14px;display:flex;align-items:center;gap:12px}
+.slabel::before{content:'';width:14px;height:2px;background:var(--brand);border-radius:2px;flex-shrink:0}
+.slabel::after{content:'';flex:1;height:1px;background:var(--border)}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:20px}
+.spinner{width:36px;height:36px;border:2px solid rgba(107,111,168,.2);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite}
+.loading-text{font-size:13px;color:var(--sub);letter-spacing:.04em}
+.error-state{text-align:center;padding:60px 20px;display:none}
+.error-icon{font-size:36px;margin-bottom:12px}
+.error-title{font-size:16px;font-weight:700;margin-bottom:6px;color:var(--red)}
+.error-sub{font-size:13px;color:var(--sub)}
+.presente{background:#EEEDFE;border-left:4px solid var(--brand);border-radius:0 var(--r) var(--r) 0;padding:18px 22px;margin-bottom:24px}
+.presente-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--brand2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.presente-item{font-size:14px;color:var(--text);margin-bottom:4px;padding-left:4px}
+.presente-empty{font-size:13px;color:var(--sub);font-style:italic}
+.funnel{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:8px}
+.fcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;text-align:center;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;box-shadow:var(--shadow);cursor:pointer}
+.fcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.fcard.active{border-color:var(--brand);border-width:2px}
+.fcard-top{height:3px;position:absolute;top:0;left:0;right:0}
+.fcard-num{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;line-height:1}
+.fcard-label{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--sub);margin-top:6px}
+.fcard-stuck{font-size:10px;color:var(--red);margin-top:4px;font-family:'DM Mono',monospace}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;box-shadow:var(--shadow)}
+.card-head{margin-bottom:18px}
+.card-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:.06em;color:var(--text);margin-bottom:2px;text-transform:uppercase}
+.card-sub{font-size:12px;color:var(--sub)}
+.list-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg3)}
+.list-row:last-child{border-bottom:none}
+.list-name{flex:1;font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-meta{font-size:11px;color:var(--sub);font-family:'DM Mono',monospace;white-space:nowrap}
+.tag-pill{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;white-space:nowrap}
+.stuck-badge{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:700;font-family:'Barlow Condensed',sans-serif;background:rgba(220,38,38,.1);color:var(--red);white-space:nowrap}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:var(--brand);text-align:left;padding:0 10px 12px 0;border-bottom:2px solid var(--border);letter-spacing:.12em;text-transform:uppercase}
+.data-table td{padding:10px 10px 10px 0;border-bottom:1px solid var(--bg3);color:var(--text2);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(107,111,168,.03)}
+.etapa-tag{font-size:10px;padding:3px 9px;border-radius:3px;font-weight:600;white-space:nowrap;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em}
+.tlink{color:var(--brand);text-decoration:none;font-weight:500}
+.tlink:hover{text-decoration:underline}
+.footer{text-align:center;padding:32px 20px 20px;font-size:11px;color:var(--dim);font-family:'DM Mono',monospace;border-top:1px solid var(--border)}
+.footer-logo{display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.footer-logo img{height:20px;opacity:.4}
+@media(max-width:768px){.main{padding:20px 18px 60px}.header{padding:0 18px}.two-col{grid-template-columns:1fr}.funnel{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">
+    <img class="logo-img" src="https://static.wixstatic.com/media/ba461a_0e1548d32de3474ca3b30c9443f4b227~mv2.jpg/v1/crop/x_494,y_1054,w_3113,h_593/fill/w_189,h_36,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/modularok_marca_2022_1.jpg" alt="ModularOK" onerror="this.style.display='none';document.getElementById('lf').style.display='flex'">
+    <div id="lf" style="display:none"><span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--brand)">M▣DULAR▣K</span></div>
+    <div class="logo-divider"></div>
+    <div class="logo-sub">Procesos</div>
+  </div>
+  <div class="header-right">
+    <div class="hpill live"><div class="live-dot"></div>En vivo · Trello</div>
+    <div class="hpill" id="h-count">Cargando...</div>
+    <div class="hpill" id="h-updated"></div>
+    <button class="btn-refresh" id="btn-refresh" onclick="cargarDatos()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,4 3,2 5,4"/><path d="M3 2v5a5 5 0 0 0 10 0V5"/></svg>
+      Actualizar
+    </button>
+  </div>
+</div>
+<div class="main">
+  <div class="loading" id="loading"><div class="spinner"></div><div class="loading-text">Conectando con Trello...</div></div>
+  <div class="error-state" id="error-state"><div class="error-icon">⚠️</div><div class="error-title">No se pudieron cargar los datos</div><div class="error-sub">Verifica que el Sheet sea público y vuelve a intentarlo</div></div>
+  <div id="content" style="display:none">
+ 
+    <div class="presente">
+      <div class="presente-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Hoy ModularOK dice presente</div>
+      <div id="presente-body"></div>
+    </div>
+ 
+    <div class="slabel">Pipeline por etapa</div>
+    <div class="funnel" id="funnel"></div>
+ 
+    <div class="two-col" style="margin-top:24px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Proyectos estancados</div><div class="card-sub">Superan el umbral de días en su etapa</div></div>
+        <div id="stuck-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Distribución por etiqueta</div><div class="card-sub">Prioridad asignada en Trello</div></div>
+        <div style="position:relative;height:200px"><canvas id="c-tags"></canvas></div>
+      </div>
+    </div>
+ 
+    <div class="slabel">Próximas fechas límite</div>
+    <div class="card">
+      <div id="upcoming-list"></div>
+    </div>
+ 
+    <div class="slabel" id="lbl-detalle">Detalle de proyectos</div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr><th>Proyecto</th><th>Etapa</th><th>Días en etapa</th><th>Estado</th><th>Etiquetas</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="footer">
+  <div class="footer-logo"><img src="https://static.wixstatic.com/media/ba461a_0e1548d32de3474ca3b30c9443f4b227~mv2.jpg/v1/crop/x_494,y_1054,w_3113,h_593/fill/w_189,h_36,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/modularok_marca_2022_1.jpg" alt="ModularOK"></div>
+  <span id="footer-text">Datos obtenidos desde Trello</span>
+</div>
+ 
+<script>
+const SHEET_ID='1EcoTuABCeC-4u2K7aarq6ZnqlqscfJkZ10N6SUTKU10';
+const GID='1724103473';
+const GVIZ_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+ 
+// Colores por etapa (se asignan dinámicamente)
+const ETAPA_COLORS={'cotización':'#888780','cotizacion':'#888780','solicitudes':'#888780','negociación':'#7c3aed','negociacion':'#7c3aed','urgente':'#dc2626','en proceso':'#d97706','producción':'#d97706','produccion':'#d97706','en feria':'#00a67e','listo':'#2563eb','finalizado':'#2563eb','perdido':'#dc2626','vista general de proyectos':'#a8aabe','instructivo':'#a8aabe'};
+const TAG_COLORS={'urgente':'#dc2626','urgente e importante':'#dc2626','importante':'#d97706','puede esperar':'#00a67e'};
+ 
+let allCards=[];
+let activeFilter='todos';
+let charts={};
+ 
+async function cargarDatos(){
+  const btn=document.getElementById('btn-refresh');btn.classList.add('spinning');
+  try{
+    const res=await fetch(GVIZ_URL);
+    const text=await res.text();
+    const json=JSON.parse(text.replace(/^[^(]+\(/,'').replace(/\);?\s*$/,''));
+    const cols=json.table.cols.map(c=>c.label);
+    const rows=json.table.rows||[];
+    const ci={};cols.forEach((c,i)=>{ci[c]=i;});
+ 
+    allCards=rows.filter(r=>r.c&&r.c[ci['Proyecto']]?.v).map(r=>({
+      name:String(r.c[ci['Proyecto']]?.v||'').trim(),
+      etapa:String(r.c[ci['Etapa']]?.v||'').trim(),
+      resp:String(r.c[ci['Responsable(s)']]?.v||'—').trim(),
+      fechaLimite:String(r.c[ci['Fecha límite']]?.v||'—').trim(),
+      dias:parseInt(r.c[ci['Días en etapa']]?.v)||0,
+      estancado:String(r.c[ci['Estancado']]?.v||'').trim(),
+      etiquetas:String(r.c[ci['Etiquetas']]?.v||'—').trim(),
+      url:String(r.c[ci['URL tarjeta']]?.v||'').trim(),
+    }));
+ 
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error-state').style.display='none';
+    document.getElementById('content').style.display='block';
+    const now=new Date();
+    document.getElementById('h-updated').textContent=`${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+    document.getElementById('footer-text').textContent=`Datos obtenidos desde Trello · ${now.toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'})}`;
+    render();
+  }catch(e){
+    console.error(e);
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error-state').style.display='block';
+  }
+  btn.classList.remove('spinning');
+}
+ 
+function colorEtapa(e){return ETAPA_COLORS[e.toLowerCase().trim()]||'#6B6FA8';}
+function colorTag(t){
+  const low=t.toLowerCase();
+  for(const k in TAG_COLORS){if(low.includes(k))return TAG_COLORS[k];}
+  return '#6B6FA8';
+}
+ 
+function render(){
+  document.getElementById('h-count').textContent=allCards.length+' proyectos';
+  renderPresente();
+  renderFunnel();
+  renderStuck();
+  renderTagsChart();
+  renderUpcoming();
+  renderTable();
+}
+ 
+function renderPresente(){
+  // "En feria" hoy + desmontajes próximos. Como el tablero actual no tiene esas etapas,
+  // mostramos los proyectos con fecha límite cercana como aproximación.
+  const body=document.getElementById('presente-body');
+  const enFeria=allCards.filter(c=>c.etapa.toLowerCase().includes('feria')||c.etapa.toLowerCase().includes('proceso'));
+  let html='';
+  if(enFeria.length>0){
+    enFeria.slice(0,5).forEach(c=>{html+=`<div class="presente-item">• ${c.name} — ${c.etapa}</div>`;});
+  }else{
+    html='<div class="presente-empty">No hay stands marcados en feria o producción actualmente. Cuando el equipo use las etapas "En Feria" y "Producción", aquí aparecerá la operación del día.</div>';
+  }
+  body.innerHTML=html;
+}
+ 
+function renderFunnel(){
+  const counts={};
+  allCards.forEach(c=>{counts[c.etapa]=(counts[c.etapa]||0)+(0);counts[c.etapa]={total:(counts[c.etapa]?.total||0)+1,stuck:(counts[c.etapa]?.stuck||0)+(c.estancado?1:0)};});
+  // recompute cleanly
+  const clean={};
+  allCards.forEach(c=>{if(!clean[c.etapa])clean[c.etapa]={total:0,stuck:0};clean[c.etapa].total++;if(c.estancado)clean[c.etapa].stuck++;});
+  const order=['Cotización','Solicitudes','SOLICITUDES','Negociación','URGENTE','En Proceso','EN PROCESO','Producción','En Feria','LISTO','Finalizado','Perdido'];
+  const etapas=Object.keys(clean).sort((a,b)=>{
+    const ia=order.findIndex(o=>o.toLowerCase()===a.toLowerCase());
+    const ib=order.findIndex(o=>o.toLowerCase()===b.toLowerCase());
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  const f=document.getElementById('funnel');
+  f.innerHTML=etapas.map(e=>{
+    const col=colorEtapa(e);
+    const d=clean[e];
+    return `<div class="fcard ${activeFilter===e?'active':''}" onclick="filtrar('${e.replace(/'/g,"\\'")}')">
+      <div class="fcard-top" style="background:${col}"></div>
+      <div class="fcard-num" style="color:${col}">${d.total}</div>
+      <div class="fcard-label">${e}</div>
+      ${d.stuck>0?`<div class="fcard-stuck">${d.stuck} estancado${d.stuck>1?'s':''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+ 
+function filtrar(etapa){activeFilter=activeFilter===etapa?'todos':etapa;render();}
+ 
+function renderStuck(){
+  const stuck=allCards.filter(c=>c.estancado).sort((a,b)=>b.dias-a.dias);
+  const el=document.getElementById('stuck-list');
+  if(stuck.length===0){el.innerHTML='<div class="presente-empty">No hay proyectos estancados. Todo fluye dentro de los plazos.</div>';return;}
+  el.innerHTML=stuck.slice(0,8).map(c=>`<div class="list-row">
+    <span class="list-name">${c.name}</span>
+    <span class="etapa-tag" style="background:${colorEtapa(c.etapa)}1a;color:${colorEtapa(c.etapa)}">${c.etapa}</span>
+    <span class="stuck-badge">${c.dias}d</span>
+  </div>`).join('');
+}
+ 
+function renderTagsChart(){
+  const counts={};
+  allCards.forEach(c=>{
+    if(c.etiquetas&&c.etiquetas!=='—'){
+      c.etiquetas.split(',').forEach(t=>{const tt=t.trim();if(tt)counts[tt]=(counts[tt]||0)+1;});
+    }
+  });
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(charts.tags)charts.tags.destroy();
+  charts.tags=new Chart(document.getElementById('c-tags'),{
+    type:'doughnut',
+    data:{labels:sorted.map(s=>s[0]),datasets:[{data:sorted.map(s=>s[1]),backgroundColor:sorted.map(s=>colorTag(s[0])),borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{font:{size:11,family:'Barlow'},color:'#3d3f5c',boxWidth:10,padding:8}}}}
+  });
+}
+ 
+function renderUpcoming(){
+  const withDate=allCards.filter(c=>c.fechaLimite&&c.fechaLimite!=='—').map(c=>{
+    const m=c.fechaLimite.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    let d=null;if(m)d=new Date(m[3],m[2]-1,m[1]);
+    return {...c,dateObj:d};
+  }).filter(c=>c.dateObj).sort((a,b)=>a.dateObj-b.dateObj);
+  const el=document.getElementById('upcoming-list');
+  if(withDate.length===0){el.innerHTML='<div class="presente-empty">No hay fechas límite registradas.</div>';return;}
+  el.innerHTML=withDate.slice(0,10).map(c=>`<div class="list-row">
+    <span class="list-meta" style="min-width:80px">${c.fechaLimite.split(' ')[0]}</span>
+    <span class="list-name">${c.name}</span>
+    <span class="etapa-tag" style="background:${colorEtapa(c.etapa)}1a;color:${colorEtapa(c.etapa)}">${c.etapa}</span>
+  </div>`).join('');
+}
+ 
+function renderTable(){
+  const data=activeFilter==='todos'?allCards:allCards.filter(c=>c.etapa===activeFilter);
+  const sorted=[...data].sort((a,b)=>b.dias-a.dias);
+  document.getElementById('lbl-detalle').childNodes[0].textContent=activeFilter==='todos'?'Detalle de proyectos':`Detalle · ${activeFilter}`;
+  document.getElementById('tbody').innerHTML=sorted.map(c=>`<tr>
+    <td style="font-weight:600;color:var(--text)">${c.name}</td>
+    <td><span class="etapa-tag" style="background:${colorEtapa(c.etapa)}1a;color:${colorEtapa(c.etapa)}">${c.etapa}</span></td>
+    <td class="mono" style="font-family:'DM Mono',monospace">${c.dias}d</td>
+    <td>${c.estancado?`<span class="stuck-badge">Estancado</span>`:'<span style="color:var(--teal);font-size:11px">OK</span>'}</td>
+    <td style="font-size:11px;color:var(--sub)">${c.etiquetas}</td>
+    <td>${c.url?`<a href="${c.url}" target="_blank" class="tlink">Ver →</a>`:''}</td>
+  </tr>`).join('');
+}
+ 
+setInterval(cargarDatos,5*60*1000);
+cargarDatos();
+</script>
+</body>
+</html>
+ 
